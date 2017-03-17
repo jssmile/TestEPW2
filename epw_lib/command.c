@@ -71,58 +71,88 @@ void receive_task(){
 			getEncoder();
 		}
 
-		else if(received_string[0] == 'u'){
-			if(received_string[1] == 'a'){
-			    USART_puts(USART3, "Actu_A_up");
-			    set_linearActuator_A_cmd(LINEAR_ACTU_CW);
+		else if(received_string[0] == 'n'){
+			USART_puts(USART3, "Actu_A_up");
+			set_linearActuator_A_cmd(LINEAR_ACTU_CW);
+		    USART_puts(USART3, "\r\n");
+			}
+
+		else if(received_string[0] == 'd'){
+			    USART_puts(USART3, "Actu_A_down");
+			    set_linearActuator_A_cmd(LINEAR_ACTU_CCW);
 			    USART_puts(USART3, "\r\n");
-			}else if(received_string[1] == 'b'){
+			}
+
+		else if(received_string[0] == 'a'){
+			    USART_puts(USART3, "Actu_A_stop");
+			    set_linearActuator_A_cmd(LINEAR_ACTU_STOP);
+			    USART_puts(USART3, "\r\n");
+			}
+		
+
+		else if(received_string[0] == 'u'){
 			    USART_puts(USART3, "Actu_B_up");
 			    set_linearActuator_B_cmd(LINEAR_ACTU_CW);
 			    USART_puts(USART3, "\r\n");
 			}
-		}
-		else if(received_string[0] == 'd'){
-			if(received_string[1] == 'a'){
-			    USART_puts(USART3, "Actu_A_down");
-			    //set_linearActuator_A_cmd(LINEAR_ACTU_CCW);
-			    USART_puts(USART3, "\r\n");
-			    processCMD('x', LINEAR_ACTU_CCW);
-			}else if(received_string[1] == 'b'){
+		
+		else if(received_string[0] == 'k'){
 			    USART_puts(USART3, "Actu_B_down");
-			    //set_linearActuator_B_cmd(LINEAR_ACTU_CCW);
+			    set_linearActuator_B_cmd(LINEAR_ACTU_CCW);
 			    USART_puts(USART3, "\r\n");
-			    processCMD('y', LINEAR_ACTU_CCW);
 			}
-		}
 
-		else if(received_string[0] == 'a'){
+		else if(received_string[0] == 'w'){
+			    USART_puts(USART3, "Actu_B_stop");
+			    set_linearActuator_B_cmd(LINEAR_ACTU_STOP);
+			    USART_puts(USART3, "\r\n");
+			}
+
+		else if(received_string[0] == 'm'){
 			mPowerON();
-		}
-		else if(received_string[0] == 'A'){
-			mPowerOFF();
-		}
-		else if(received_string[0] == 'q'){
 			mSwitchON();
 		}
-		else if(received_string[0] == 'Q'){
+		else if(received_string[0] == 'q'){
+			mPowerOFF();
 			mSwitchOFF();
 		}
 		else if(received_string[0] == 'c'){
 			getCurData();
 		}
-		//else if(received_string[0] == 's'){
-			/* stop */
-		//	processCMD('s', '0');
-		//}
+
 		else if(received_string[0] == 'f'){
 			/* forward */
-			processCMD('f', '0');
+			USART_puts(USART3, "Forward");
+			USART_puts(USART3, "\r\n");
+			motorFNN();
 		}
 		else if(received_string[0] == 'b'){
 			/* backward */
-			processCMD('b', '0');
+			USART_puts(USART3, "Backward");
+			USART_puts(USART3, "\r\n");
+			motorbackFNN();
 		}
+
+		else if(received_string[0] == 'l'){
+			/* left */
+			USART_puts(USART3, "Left");
+			USART_puts(USART3, "\r\n");
+			motorleftFNN();
+		}
+
+		else if(received_string[0] == 'r'){
+			/* right */
+			USART_puts(USART3, "Right");
+			USART_puts(USART3, "\r\n");
+			motorrightFNN();
+		}
+
+		else if(received_string[0] == 's'){
+			USART_puts(USART3, "stop");
+			USART_puts(USART3, "\r\n");
+			motorStop();
+		}
+
 		else if(received_string[0] == 't'){
 			/* check motor status */
 			char s;
@@ -130,19 +160,30 @@ void receive_task(){
 			USART_puts(USART3, "status: ");
 			USART_putd(USART3, s);
 			USART_puts(USART3, "\r\n");
-		}
+			if (s == 0){
+				USART_puts(USART3, "All pass");
+				USART_puts(USART3, "\r\n");
+			}
+			else if(s == 1){
+				USART_puts(USART3, "Left fail");
+				USART_puts(USART3, "\r\n");
+			}
 
-		else if(received_string[0] == 'm'){
-			/* motorTest */
-			//motorTest();
-			motorFNN();
+			else if(s == 2){
+				USART_puts(USART3, "Right fail");
+				USART_puts(USART3, "\r\n");
+			}
+
+			else if(s == 3){
+				USART_puts(USART3, "All fail");
+				USART_puts(USART3, "\r\n");
+			}
+			
 		}
-		else if(received_string[0] == 's'){
-			motorStop();
-		}
+/*
 		else if(received_string[0] == 'r'){
 			endofRecord();
-		}
+		}*/
 
 		else{
 			USART_puts(USART3, received_string);

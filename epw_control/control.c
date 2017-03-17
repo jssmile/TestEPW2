@@ -31,22 +31,20 @@ void processCMD(uint8_t id, uint8_t value){
 	{
 		case CMD_STOP:
 			mStop(mBoth);
-			//PowerOFF
-			CMD_State = EPW_STOP;
 			break;
 		case CMD_FORWARD:
 			if((EPW_State == EPW_IDLE) || (EPW_State == EPW_FORWARD))
 			{
-				test_forward();
 				CMD_State = EPW_FORWARD;
+				motorFNN();
 				USART_puts(USART3, "forward");
 			}
 			break;
 		case CMD_BACKWARD:
 			if((EPW_State == EPW_IDLE) || (EPW_State == EPW_BACKWARD))
 			{
-				test_backward();
 				CMD_State = EPW_BACKWARD;
+				motorbackFNN();
 			}
 			USART_puts(USART3, "back");
 			break;
@@ -133,7 +131,7 @@ void forward(){
 	}
 	else{
 		mStop(mBoth);
-		CMD_State = EPW_STOP;
+		//CMD_State = EPW_STOP;
 		if(!(cnt[0] || cnt[1])){
 			xTimerDelete(ctrlTimer, 0);
 		}
@@ -189,7 +187,7 @@ void backward(){
 	}
 	else{
 		mStop(mBoth);
-		CMD_State = EPW_STOP;
+		//CMD_State = EPW_STOP;
 		if(!(cnt[0] || cnt[1])){
 			xTimerDelete(ctrlTimer, 0);
 		}
@@ -368,7 +366,7 @@ void testFNN(){
 	}
 	else{
 		mStop(mBoth);
-		//CMD_State = EPW_STOP;
+		CMD_State = EPW_IDLE;
 		if(!(cnt[0] || cnt[1])){
 			xTimerDelete(testTimer, 0);
 			USART_puts(USART3, "delete\r\n");
@@ -383,6 +381,7 @@ void testFNN(){
 	recControlData3(SpeedValue_left, SpeedValue_right, cnt[0], cnt[1], cur[0], cur[1],fnn_l, fnn_r);
 }
 
+// FNN forward
 void moveFNN(){
 	int cnt[2];
 	cnt[0] = getEncoderLeftSign();
@@ -406,9 +405,9 @@ void moveFNN(){
 
 	}
 	else{
-		//mStop(mBoth);
+		mStop(mBoth);
 		fzyNeuCtrl(cnt[0], cnt[1], 0.0f, 0.0f);
-		//CMD_State = EPW_STOP;
+		CMD_State = EPW_STOP;
 		if(!(cnt[0] || cnt[1])){
 			xTimerDelete(testTimer, 0);
 			USART_puts(USART3, "delete\r\n");
@@ -425,7 +424,7 @@ void moveFNN(){
 
 void motorFNN(){
 	initFNN();
-
+	CMD_State = EPW_FORWARD;
 	/* reset encoder counter */
 	getEncoderLeftSign();
 	getEncoderRightSign();
@@ -438,6 +437,207 @@ void motorFNN(){
 
 	if((xTimerIsTimerActive(testTimer) != pdTRUE) || (testTimer == NULL)){
 		testTimer = xTimerCreate("test motor", (20), pdTRUE, (void *) 6, moveFNN);
+
+		USART_puts(USART3, "ctrl:");
+		USART_putd(USART3, testTimer);
+		USART_puts(USART3, "\r\n");
+		xTimerStart(testTimer, 0);
+	}
+	else{
+		xTimerReset(testTimer, 0);
+	}
+}
+
+// FNN Backward
+void movebackFNN(){
+	int cnt[2];
+	cnt[0] = getEncoderLeftSign();
+	cnt[1] = getEncoderRightSign();
+
+	int cur[2];
+	cur[0] = getCurLeft();
+	cur[1] = getCurRight();
+
+	fnn_l = 0;
+	fnn_r = 0;
+
+	if(cmd_cnt && (CMD_State != EPW_STOP)){
+		--cmd_cnt;
+
+		if(cmd_cnt > 0)fzyNeuCtrl(cnt[0], cnt[1], -15.0f, -15.0f);
+
+		SpeedValue_left = 600 + fnn_l;
+		SpeedValue_right = 600 + fnn_r;
+		mMove(SpeedValue_left,SpeedValue_right);
+
+	}
+	else{
+		mStop(mBoth);
+		fzyNeuCtrl(cnt[0], cnt[1], 0.0f, 0.0f);
+		CMD_State = EPW_STOP;
+		if(!(cnt[0] || cnt[1])){
+			xTimerDelete(testTimer, 0);
+			USART_puts(USART3, "delete\r\n");
+			endofRecord();
+		}
+	}
+
+	// current related to control signals
+	if(SpeedValue_left < 590) cur[0] = 0 - cur[0];
+	if(SpeedValue_right < 590) cur[1] = 0 - cur[1];
+
+	recControlData3(SpeedValue_left, SpeedValue_right, cnt[0], cnt[1], cur[0], cur[1],fnn_l, fnn_r);
+}
+
+void motorbackFNN(){
+	initFNN();
+	CMD_State = EPW_FORWARD;
+	/* reset encoder counter */
+	getEncoderLeftSign();
+	getEncoderRightSign();
+
+	SpeedValue_left = 600;
+	SpeedValue_right = 600;
+
+	cmd_cnt = 250;
+	/* command time(ms) = cmd_cnt * period(20ms) */
+
+	if((xTimerIsTimerActive(testTimer) != pdTRUE) || (testTimer == NULL)){
+		testTimer = xTimerCreate("test motor", (20), pdTRUE, (void *) 6, movebackFNN);
+
+		USART_puts(USART3, "ctrl:");
+		USART_putd(USART3, testTimer);
+		USART_puts(USART3, "\r\n");
+		xTimerStart(testTimer, 0);
+	}
+	else{
+		xTimerReset(testTimer, 0);
+	}
+}
+
+// FNN Right
+void moverightFNN(){
+	int cnt[2];
+	cnt[0] = getEncoderLeftSign();
+	cnt[1] = getEncoderRightSign();
+
+	int cur[2];
+	cur[0] = getCurLeft();
+	cur[1] = getCurRight();
+
+	fnn_l = 0;
+	fnn_r = 0;
+
+	if(cmd_cnt && (CMD_State != EPW_STOP)){
+		--cmd_cnt;
+
+		if(cmd_cnt > 0)fzyNeuCtrl(cnt[0], cnt[1], 20.0f, -15.0f);
+
+		SpeedValue_left = 600 + fnn_l;
+		SpeedValue_right = 600 + fnn_r;
+		mMove(SpeedValue_left,SpeedValue_right);
+
+	}
+	else{
+		mStop(mBoth);
+		fzyNeuCtrl(cnt[0], cnt[1], 0.0f, 0.0f);
+		CMD_State = EPW_STOP;
+		if(!(cnt[0] || cnt[1])){
+			xTimerDelete(testTimer, 0);
+			USART_puts(USART3, "delete\r\n");
+			endofRecord();
+		}
+	}
+
+	// current related to control signals
+	if(SpeedValue_left < 590) cur[0] = 0 - cur[0];
+	if(SpeedValue_right < 590) cur[1] = 0 - cur[1];
+
+	recControlData3(SpeedValue_left, SpeedValue_right, cnt[0], cnt[1], cur[0], cur[1],fnn_l, fnn_r);
+}
+
+void motorrightFNN(){
+	initFNN();
+	CMD_State = EPW_FORWARD;
+	/* reset encoder counter */
+	getEncoderLeftSign();
+	getEncoderRightSign();
+
+	SpeedValue_left = 600;
+	SpeedValue_right = 600;
+
+	cmd_cnt = 180;
+	/* command time(ms) = cmd_cnt * period(20ms) */
+
+	if((xTimerIsTimerActive(testTimer) != pdTRUE) || (testTimer == NULL)){
+		testTimer = xTimerCreate("test motor", (20), pdTRUE, (void *) 6, moverightFNN);
+
+		USART_puts(USART3, "ctrl:");
+		USART_putd(USART3, testTimer);
+		USART_puts(USART3, "\r\n");
+		xTimerStart(testTimer, 0);
+	}
+	else{
+		xTimerReset(testTimer, 0);
+	}
+}
+
+// FNN left
+void moveleftFNN(){
+	int cnt[2];
+	cnt[0] = getEncoderLeftSign();
+	cnt[1] = getEncoderRightSign();
+
+	int cur[2];
+	cur[0] = getCurLeft();
+	cur[1] = getCurRight();
+
+	fnn_l = 0;
+	fnn_r = 0;
+
+	if(cmd_cnt && (CMD_State != EPW_STOP)){
+		--cmd_cnt;
+
+		if(cmd_cnt > 0)fzyNeuCtrl(cnt[0], cnt[1], -15.0f, 20.0f);
+
+		SpeedValue_left = 600 + fnn_l;
+		SpeedValue_right = 600 + fnn_r;
+		mMove(SpeedValue_left,SpeedValue_right);
+
+	}
+	else{
+		mStop(mBoth);
+		fzyNeuCtrl(cnt[0], cnt[1], 0.0f, 0.0f);
+		CMD_State = EPW_STOP;
+		if(!(cnt[0] || cnt[1])){
+			xTimerDelete(testTimer, 0);
+			USART_puts(USART3, "delete\r\n");
+			endofRecord();
+		}
+	}
+
+	// current related to control signals
+	if(SpeedValue_left < 590) cur[0] = 0 - cur[0];
+	if(SpeedValue_right < 590) cur[1] = 0 - cur[1];
+
+	recControlData3(SpeedValue_left, SpeedValue_right, cnt[0], cnt[1], cur[0], cur[1],fnn_l, fnn_r);
+}
+
+void motorleftFNN(){
+	initFNN();
+	CMD_State = EPW_FORWARD;
+	/* reset encoder counter */
+	getEncoderLeftSign();
+	getEncoderRightSign();
+
+	SpeedValue_left = 600;
+	SpeedValue_right = 600;
+
+	cmd_cnt = 180;
+	/* command time(ms) = cmd_cnt * period(20ms) */
+
+	if((xTimerIsTimerActive(testTimer) != pdTRUE) || (testTimer == NULL)){
+		testTimer = xTimerCreate("test motor", (20), pdTRUE, (void *) 6, moveleftFNN);
 
 		USART_puts(USART3, "ctrl:");
 		USART_putd(USART3, testTimer);
